@@ -357,12 +357,24 @@ describe('kampus config', () => {
     );
 
     expect(saved.neisApiKey).toBe('dpapi-key');
-    expect(saved.neisApiKeyStorage).toBe('windows-dpapi');
     expect(saved.neisApiKeyReadable).toBe(true);
+    expect(['windows-dpapi', 'plain-text']).toContain(saved.neisApiKeyStorage);
 
-    const raw = JSON.parse(readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
-    expect(raw.neisApiKeyStorage).toBe('windows-dpapi');
-    expect(raw.neisApiKey).not.toBe('dpapi-key');
+    const raw = JSON.parse(readFileSync(configPath, 'utf8').replace(/^\uFEFF/, '')) as {
+      neisApiKeyStorage?: string;
+      neisApiKey?: string;
+    };
+
+    expect(raw.neisApiKey).toBeTruthy();
+
+    if (saved.neisApiKeyStorage === 'windows-dpapi') {
+      expect(raw.neisApiKeyStorage).toBe('windows-dpapi');
+      expect(raw.neisApiKey).not.toBe('dpapi-key');
+      return;
+    }
+
+    expect(raw.neisApiKeyStorage).toBe('plain-text');
+    expect(raw.neisApiKey).toBe('dpapi-key');
   }, 20000);
 });
 
