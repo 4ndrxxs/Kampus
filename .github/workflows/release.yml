@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -21,7 +21,7 @@ jobs:
           version: 10.32.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: pnpm
@@ -45,6 +45,19 @@ jobs:
           name: kampus-package
           path: artifacts/*.tgz
 
+      - name: Resolve publish tarball
+        id: tarball
+        shell: bash
+        run: |
+          shopt -s nullglob
+          files=(./artifacts/*.tgz)
+          if [ "${#files[@]}" -ne 1 ]; then
+            echo "Expected exactly one tarball in ./artifacts, found ${#files[@]}." >&2
+            ls -la ./artifacts || true
+            exit 1
+          fi
+          echo "path=${files[0]}" >> "$GITHUB_OUTPUT"
+
       - name: Check publish eligibility
         id: publish-gate
         shell: bash
@@ -61,7 +74,7 @@ jobs:
         if: steps.publish-gate.outputs.enabled == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish artifacts/*.tgz --access public
+        run: npm publish "${{ steps.tarball.outputs.path }}" --access public
 
       - name: Publish skipped
         if: steps.publish-gate.outputs.enabled != 'true'
