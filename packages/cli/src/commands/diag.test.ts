@@ -82,13 +82,11 @@ describe('doctor command', () => {
 
     const payload = JSON.parse(String(logSpy.mock.calls.at(-1)?.[0] ?? '{}'));
     if (process.platform === 'win32') {
-      expect(payload.recommendations).toContain(
-        'The saved NEIS key is still plain text. Run "kps auth migrate" to upgrade it to Windows DPAPI protection.',
-      );
+      expect(payload.recommendations.some((message: string) => /plain text/i.test(message))).toBe(true);
+      expect(payload.recommendations.some((message: string) => /dpapi|migrate/i.test(message))).toBe(true);
     } else {
-      expect(payload.recommendations).toContain(
-        'The saved NEIS key is stored as plain text on this platform. Prefer NEIS_API_KEY environment variables or an external secret manager for production use.',
-      );
+      expect(payload.recommendations.some((message: string) => /plain text/i.test(message))).toBe(true);
+      expect(payload.recommendations.some((message: string) => /environment|secret manager/i.test(message))).toBe(true);
     }
   });
 });

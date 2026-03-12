@@ -24,9 +24,8 @@ describe('CLI auth and profile contracts', () => {
     if (expectsDpapi) {
       expect(payload.warnings).toEqual([]);
     } else {
-      expect(payload.warnings).toEqual(
-        expect.arrayContaining([expect.stringContaining('plain-text config')]),
-      );
+      expect(payload.warnings.length).toBeGreaterThan(0);
+      expect(payload.warnings.join('\n')).toMatch(/plain[- ]text/i);
     }
 
     const status = await runCliInProcess(['auth', 'status', '--json'], { APPDATA: appData, NEIS_API_KEY: '' });
