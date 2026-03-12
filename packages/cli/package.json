@@ -1,0 +1,51 @@
+{
+    "name":  "@kampus/cli",
+    "version":  "0.1.0",
+    "description":  "kps - Korean Campus CLI",
+    "type":  "module",
+    "bin":  {
+                "kps":  "dist/bin.js"
+            },
+    "files":  [
+                  "dist"
+              ],
+    "main":  "dist/index.js",
+    "types":  "src/index.ts",
+    "publishConfig":  {
+                          "access":  "public"
+                      },
+    "scripts":  {
+                    "predev":  "pnpm -r --filter @kampus/core --filter @kampus/provider-comcigan --filter @kampus/provider-neis run build",
+                    "pretest":  "pnpm -r --filter @kampus/core --filter @kampus/provider-comcigan --filter @kampus/provider-neis run build",
+                    "build":  "node ../../scripts/clean-package.mjs \u0026\u0026 tsc -p tsconfig.build.json",
+                    "clean":  "node ../../scripts/clean-package.mjs",
+                    "typecheck":  "tsc --noEmit",
+                    "test":  "vitest run --passWithNoTests",
+                    "test:watch":  "vitest",
+                    "dev":  "tsx src/bin.ts"
+                },
+    "dependencies":  {
+                         "@kampus/core":  "workspace:*",
+                         "@kampus/provider-comcigan":  "workspace:*",
+                         "@kampus/provider-neis":  "workspace:*",
+                         "chalk":  "^5.6.2",
+                         "commander":  "^13.0.0",
+                         "ink":  "^6.8.0",
+                         "react":  "^19.2.4"
+                     },
+    "devDependencies":  {
+                            "@types/react":  "^19.2.14",
+                            "tsx":  "^4.0.0",
+                            "typescript":  "^5.8.0",
+                            "vitest":  "^3.0.0"
+                        },
+    "repository":  {
+                       "type":  "git",
+                       "url":  "git+https://github.com/4ndrxxs/Kampus.git"
+                   },
+    "homepage":  "https://github.com/4ndrxxs/Kampus#readme",
+    "bugs":  {
+                 "url":  "https://github.com/4ndrxxs/Kampus/issues"
+             }
+}
+

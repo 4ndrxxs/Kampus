@@ -1,0 +1,290 @@
+name: Live Smoke
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  no-key-smoke:
+    name: No-Key Live Smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: No-key smoke
+        id: smoke
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          node packages/cli/dist/bin.js doctor --live --json | tee no-key-smoke.json
+
+      - name: Upload no-key smoke artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: no-key-live-smoke
+          path: no-key-smoke.json
+          if-no-files-found: ignore
+
+      - name: Summarize no-key smoke
+        if: always()
+        shell: bash
+        run: |
+          echo "## No-Key Live Smoke" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- outcome: ${{ steps.smoke.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f no-key-smoke.json ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat no-key-smoke.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Open or update no-key smoke failure issue
+        if: steps.smoke.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = '[ops] Kampus no-key live smoke failure';
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const output = fs.existsSync('no-key-smoke.json')
+              ? fs.readFileSync('no-key-smoke.json', 'utf8').slice(0, 12000)
+              : 'no-key-smoke.json was not created.';
+            const body = [
+              'A scheduled or manual no-key live smoke run failed.',
+              '',
+              `- workflow: ${context.workflow}`,
+              `- run: ${runUrl}`,
+              `- sha: ${context.sha}`,
+              `- ref: ${context.ref}`,
+              '',
+              '```json',
+              output,
+              '```',
+            ].join('\n');
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => issue.title === title);
+            if (existing) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+              });
+            }
+
+      - name: Close no-key smoke failure issue on recovery
+        if: steps.smoke.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = '[ops] Kampus no-key live smoke failure';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body: `Recovered in workflow run ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}. Closing this smoke alert.`,
+              });
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                state: 'closed',
+              });
+            }
+
+      - name: Fail no-key smoke job
+        if: steps.smoke.outcome == 'failure'
+        run: exit 1
+
+  keyed-smoke:
+    name: Keyed Live Smoke
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && secrets.NEIS_API_KEY != '' }}
+    env:
+      NEIS_API_KEY: ${{ secrets.NEIS_API_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Keyed smoke
+        id: smoke
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm smoke:keyed | tee keyed-smoke.log
+
+      - name: Upload keyed smoke artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keyed-live-smoke
+          path: keyed-smoke.log
+          if-no-files-found: ignore
+
+      - name: Summarize keyed smoke
+        if: always()
+        shell: bash
+        run: |
+          echo "## Keyed Live Smoke" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- outcome: ${{ steps.smoke.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f keyed-smoke.log ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```text' >> "$GITHUB_STEP_SUMMARY"
+            cat keyed-smoke.log >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Open or update keyed smoke failure issue
+        if: steps.smoke.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = '[ops] Kampus keyed live smoke failure';
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const output = fs.existsSync('keyed-smoke.log')
+              ? fs.readFileSync('keyed-smoke.log', 'utf8').slice(0, 12000)
+              : 'keyed-smoke.log was not created.';
+            const body = [
+              'A scheduled or manual keyed live smoke run failed.',
+              '',
+              `- workflow: ${context.workflow}`,
+              `- run: ${runUrl}`,
+              `- sha: ${context.sha}`,
+              `- ref: ${context.ref}`,
+              '',
+              '```text',
+              output,
+              '```',
+            ].join('\n');
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => issue.title === title);
+            if (existing) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+              });
+            }
+
+      - name: Close keyed smoke failure issue on recovery
+        if: steps.smoke.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = '[ops] Kampus keyed live smoke failure';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body: `Recovered in workflow run ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}. Closing this smoke alert.`,
+              });
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                state: 'closed',
+              });
+            }
+
+      - name: Fail keyed smoke job
+        if: steps.smoke.outcome == 'failure'
+        run: exit 1

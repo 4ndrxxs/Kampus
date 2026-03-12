@@ -1,0 +1,39 @@
+{
+    "name":  "@kampus/mcp",
+    "version":  "0.1.0",
+    "description":  "MCP server for Kampus - Korean school information tools",
+    "type":  "module",
+    "bin":  {
+                "kampus-mcp":  "dist/server.js"
+            },
+    "main":  "dist/index.js",
+    "types":  "src/index.ts",
+    "scripts":  {
+                    "pretest":  "pnpm -r --filter @kampus/core --filter @kampus/provider-comcigan --filter @kampus/provider-neis run build",
+                    "build":  "node ../../scripts/clean-package.mjs \u0026\u0026 tsc -p tsconfig.build.json",
+                    "clean":  "node ../../scripts/clean-package.mjs",
+                    "typecheck":  "tsc --noEmit",
+                    "test":  "vitest run --passWithNoTests",
+                    "test:watch":  "vitest"
+                },
+    "dependencies":  {
+                         "@kampus/core":  "workspace:*",
+                         "@kampus/provider-comcigan":  "workspace:*",
+                         "@kampus/provider-neis":  "workspace:*",
+                         "@modelcontextprotocol/sdk":  "^1.12.0",
+                         "zod":  "^4.3.6"
+                     },
+    "devDependencies":  {
+                            "typescript":  "^5.8.0",
+                            "vitest":  "^3.0.0"
+                        },
+    "repository":  {
+                       "type":  "git",
+                       "url":  "git+https://github.com/4ndrxxs/Kampus.git"
+                   },
+    "homepage":  "https://github.com/4ndrxxs/Kampus#readme",
+    "bugs":  {
+                 "url":  "https://github.com/4ndrxxs/Kampus/issues"
+             }
+}
+
