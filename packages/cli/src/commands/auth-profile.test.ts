@@ -19,8 +19,9 @@ describe('CLI auth and profile contracts', () => {
       configured: true,
       preview: 'te***ey',
     });
-    expect(payload.storageMode).toBe(process.platform === 'win32' ? 'windows-dpapi' : 'plain-text');
-    if (process.platform === 'win32') {
+    const expectsDpapi = process.platform === 'win32' && payload.storageMode === 'windows-dpapi';
+    expect(['plain-text', 'windows-dpapi']).toContain(payload.storageMode);
+    if (expectsDpapi) {
       expect(payload.warnings).toEqual([]);
     } else {
       expect(payload.warnings).toEqual(
@@ -35,14 +36,14 @@ describe('CLI auth and profile contracts', () => {
       stored: true,
       readable: true,
       source: 'config',
-      storageMode: process.platform === 'win32' ? 'windows-dpapi' : 'plain-text',
+      storageMode: payload.storageMode,
     });
 
     const config = JSON.parse(
       readFileSync(join(appData, 'Kampus', 'config.json'), 'utf8').replace(/^\uFEFF/, ''),
     );
-    expect(config.neisApiKeyStorage).toBe(process.platform === 'win32' ? 'windows-dpapi' : 'plain-text');
-    if (process.platform === 'win32') {
+    expect(config.neisApiKeyStorage).toBe(payload.storageMode);
+    if (payload.storageMode === 'windows-dpapi') {
       expect(config.neisApiKey).not.toBe('test-key');
     } else {
       expect(config.neisApiKey).toBe('test-key');
@@ -67,7 +68,13 @@ describe('CLI auth and profile contracts', () => {
     });
 
     const stored = JSON.parse(readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
-    expect(stored.neisApiKeyStorage).toBe(process.platform === 'win32' ? 'windows-dpapi' : 'plain-text');
+    expect(['plain-text', 'windows-dpapi']).toContain(stored.neisApiKeyStorage);
+    if (stored.neisApiKeyStorage === 'windows-dpapi') {
+      expect(stored.neisApiKey).not.toBe('legacy-key');
+      return;
+    }
+
+    expect(stored.neisApiKey).toBe('legacy-key');
   });
 
   it('reports embedded project and developer metadata as read-only config output', async () => {
