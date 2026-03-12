@@ -45,8 +45,24 @@ jobs:
           name: kampus-package
           path: artifacts/*.tgz
 
+      - name: Check publish eligibility
+        id: publish-gate
+        shell: bash
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NPM_TOKEN" ] && [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish CLI package
-        if: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.NPM_TOKEN != '' }}
+        if: steps.publish-gate.outputs.enabled == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish artifacts/*.tgz --access public
+
+      - name: Publish skipped
+        if: steps.publish-gate.outputs.enabled != 'true'
+        run: echo "Skipping npm publish because NPM_TOKEN is not configured or this is not a tag run."
