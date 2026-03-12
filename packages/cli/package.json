@@ -1,5 +1,6 @@
 {
     "name":  "@kampus/cli",
+    "publishName": "kampus",
     "version":  "0.1.0",
     "description":  "kps - Korean Campus CLI",
     "type":  "module",

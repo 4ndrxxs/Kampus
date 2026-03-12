@@ -7,6 +7,9 @@ import { fileURLToPath } from 'node:url';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
 const artifactsDir = join(repoRoot, 'artifacts');
+const cliPackage = JSON.parse(readFileSync(join(repoRoot, 'packages', 'cli', 'package.json'), 'utf8'));
+const publishedPackageName = cliPackage.publishName ?? cliPackage.name;
+const tarballPrefix = normalizePackageNameForTarball(publishedPackageName);
 
 run('node', [join(repoRoot, 'scripts', 'pack-cli.mjs')], repoRoot);
 
@@ -23,7 +26,7 @@ try {
   run('npm', ['install', '--ignore-scripts', '--no-package-lock', '--no-save', cliTarball], tempDir);
 
   const installedPackageJson = JSON.parse(
-    readFileSync(join(tempDir, 'node_modules', '@kampus', 'cli', 'package.json'), 'utf8'),
+    readFileSync(join(resolveInstalledPackageDir(tempDir), 'package.json'), 'utf8'),
   );
 
   const invalidInternalDependencies = Object.keys(installedPackageJson.dependencies ?? {}).filter((dependency) =>
@@ -42,7 +45,7 @@ try {
     throw new Error('Packed CLI does not declare a kps bin entry.');
   }
 
-  const binPath = join(tempDir, 'node_modules', '@kampus', 'cli', binRelativePath);
+  const binPath = join(resolveInstalledPackageDir(tempDir), binRelativePath);
   run('node', [binPath, '--version'], tempDir);
   run('node', [binPath, 'doctor', '--json'], tempDir);
 } finally {
@@ -51,7 +54,7 @@ try {
 
 function resolveTarball() {
   const tarballPath = readdirSync(artifactsDir)
-    .filter((fileName) => fileName.startsWith('kampus-cli-') && fileName.endsWith('.tgz'))
+    .filter((fileName) => fileName.startsWith(`${tarballPrefix}-`) && fileName.endsWith('.tgz'))
     .map((fileName) => ({
       filePath: join(artifactsDir, fileName),
       mtimeMs: statSync(join(artifactsDir, fileName)).mtimeMs,
@@ -126,4 +129,12 @@ function quoteCmdArg(value) {
     return `"${value.replace(/"/g, '\\"')}"`;
   }
   return value;
+}
+
+function resolveInstalledPackageDir(tempDir) {
+  return join(tempDir, 'node_modules', ...publishedPackageName.split('/'));
+}
+
+function normalizePackageNameForTarball(name) {
+  return name.replace(/^@/u, '').replace(/\//gu, '-');
 }

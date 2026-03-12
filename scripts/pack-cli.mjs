@@ -17,6 +17,8 @@ const corePackage = JSON.parse(readFileSync(join(coreDir, 'package.json'), 'utf8
 const comciganPackage = JSON.parse(readFileSync(join(comciganDir, 'package.json'), 'utf8'));
 const neisPackage = JSON.parse(readFileSync(join(neisDir, 'package.json'), 'utf8'));
 const rootPackage = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8'));
+const publishedPackageName = cliPackage.publishName ?? cliPackage.name;
+const tarballPrefix = normalizePackageNameForTarball(publishedPackageName);
 const publishDependencies = collectPublishDependencies(
   cliPackage,
   corePackage,
@@ -31,7 +33,7 @@ mkdirSync(join(stageDir, 'dist'), { recursive: true });
 mkdirSync(artifactsDir, { recursive: true });
 
 for (const fileName of readdirSync(artifactsDir)) {
-  if (fileName.startsWith('kampus-cli-') && fileName.endsWith('.tgz')) {
+  if (fileName.startsWith(`${tarballPrefix}-`) && fileName.endsWith('.tgz')) {
     rmSync(join(artifactsDir, fileName), { force: true });
   }
 }
@@ -64,7 +66,7 @@ if (!bundledBin.startsWith('#!/usr/bin/env node')) {
 chmodSync(binPath, 0o755);
 
 const publishManifest = {
-  name: cliPackage.name,
+  name: publishedPackageName,
   version: cliPackage.version,
   description: cliPackage.description,
   license: rootPackage.license,
@@ -158,4 +160,8 @@ function collectPublishDependencies(...packages) {
       Object.entries(pkg.dependencies ?? {}).filter(([name]) => !name.startsWith('@kampus/')),
     ),
   );
+}
+
+function normalizePackageNameForTarball(name) {
+  return name.replace(/^@/u, '').replace(/\//gu, '-');
 }

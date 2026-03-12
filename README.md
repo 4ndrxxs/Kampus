@@ -100,6 +100,13 @@ Typed tools for agents & integrations.
 
 ## 🚀 Quick Start
 
+**Install from npm:**
+
+```bash
+npm install -g kampus
+kps --version
+```
+
 **Install & verify:**
 
 ```bash
@@ -332,7 +339,7 @@ kampus/
 | **`@kampus/core`** | Normalized types, config, cache, provider routing, snapshot diff |
 | **`@kampus/provider-comcigan`** | Unofficial Comcigan provider — dynamic `/st` route parsing, EUC-KR search, split-factor decode |
 | **`@kampus/provider-neis`** | Official NEIS provider — keyed/keyless modes, truncation detection, dataset pagination |
-| **`@kampus/cli`** | `kps` binary — human shell, easy mode, raw commands, multi-format output, profiles, auth |
+| **`@kampus/cli`** | Internal workspace package for `kps`. Published to npm as **`kampus`** |
 | **`@kampus/mcp`** | MCP server — 13 tools, `structuredContent`, transparent `dataStatus` |
 
 <details>

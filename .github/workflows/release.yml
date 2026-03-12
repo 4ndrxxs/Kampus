@@ -42,7 +42,7 @@ jobs:
       - name: Upload CLI artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kampus-cli-package
+          name: kampus-package
           path: artifacts/*.tgz
 
       - name: Publish CLI package
